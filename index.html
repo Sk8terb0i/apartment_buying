@@ -19,17 +19,6 @@
     .name.current{background:linear-gradient(90deg,#dff7e0,#c3f3c3);box-shadow:0 2px 6px rgba(76,175,80,0.12);font-weight:700}
     button.chk{background:linear-gradient(90deg,var(--accent),#2e8b57);color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
     .meta{color:var(--muted);font-size:13px}
-
-    /* horse celebration */
-    .horse-wrap{position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;overflow:hidden}
-    .horse{position:absolute;font-size:42px;transform:translateX(-120%);animation:run 1500ms linear forwards}
-    @keyframes run{0%{transform:translateX(-120%) translateY(0) rotate(0)}25%{transform:translateX(10%) translateY(-6px) rotate(-2deg)}50%{transform:translateX(50%) translateY(0) rotate(2deg)}75%{transform:translateX(90%) translateY(-6px) rotate(-1deg)}100%{transform:translateX(120%) translateY(0) rotate(0)}}
-
-    .confetti{position:absolute;left:50%;top:20%;width:12px;height:12px;opacity:0;animation:pop 800ms ease forwards}
-    @keyframes pop{0%{opacity:1;transform:translate(-50%,-20px) scale(0.6)}100%{opacity:1;transform:translate(calc(-50% + var(--x)),calc(-20px + var(--y))) scale(1)}}
-
-    .small{font-size:13px;color:var(--muted)}
-
     footer{margin-top:18px;color:var(--muted);font-size:13px}
   </style>
 </head>
@@ -41,12 +30,8 @@
     <div id="items" class="items"></div>
   </div>
 
-  <div id="celebration" class="horse-wrap" aria-hidden="true"></div>
-
   <script>
-    // ----- CONFIG -----
     const API_BASE = 'https://script.google.com/macros/s/AKfycbwoIH0xtmGmAbAt_FdWoK8mJ6WEb0seORGt-7E2VN4Edwco7WawI5a9i0aeHSIB3a-K/exec';
-    // ------------------
 
     async function apiGet() {
       const res = await fetch(API_BASE);
@@ -75,62 +60,18 @@
       return n;
     }
 
-    function playHorseSound(){
-      try{
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = 'square';
-        o.frequency.setValueAtTime(440, ctx.currentTime);
-        g.gain.setValueAtTime(0.0001, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
-        o.connect(g); g.connect(ctx.destination);
-        o.start();
-        o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.14);
-        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
-        o.stop(ctx.currentTime + 0.55);
-      }catch(e){/* audio blocked or unavailable */}
-    }
-
-    function celebrate() {
-      const wrap = document.getElementById('celebration');
-      // horse
-      const horse = el('div',{class:'horse'}, '🐎');
-      horse.style.top = (20 + Math.random()*60) + '%';
-      wrap.appendChild(horse);
-
-      // confetti bits
-      for(let i=0;i<18;i++){
-        const c = el('div',{class:'confetti'});
-        c.style.setProperty('--x', (Math.random()*240 - 120) + 'px');
-        c.style.setProperty('--y', (-200 + Math.random()*300) + 'px');
-        c.style.left = (50 + Math.random()*10 -5) + '%';
-        c.style.background = ['#f43f5e','#fb923c','#facc15','#10b981','#60a5fa'][Math.floor(Math.random()*5)];
-        c.style.borderRadius = (Math.random()*50)+'%';
-        c.style.width = (6 + Math.random()*10) + 'px';
-        c.style.height = (6 + Math.random()*10) + 'px';
-        wrap.appendChild(c);
-        // remove later
-        setTimeout(()=>c.remove(),900);
-      }
-
-      playHorseSound();
-      setTimeout(()=>horse.remove(),1600);
-    }
-
-    // Render
     async function loadAndRender(){
       const container = document.getElementById('items');
       container.innerHTML = '';
       let items;
       try{ items = await apiGet(); }catch(e){ container.appendChild(el('div',{class:'card'}, el('div',{}, 'Could not load data — check your Apps Script deployment.'))); return }
 
-      items.forEach(it => {
+      items.filter(it => it.item && it.cycle && it.cycle.length).forEach(it => {
         const card = el('div',{class:'card'});
         const head = el('div',{class:'item-head'}, el('div',{class:'item-name'}, it.item));
 
         const cycle = Array.isArray(it.cycle) ? it.cycle : (typeof it.cycle === 'string' ? it.cycle.split(',') : []);
-        const idx = Number(it.index) || 0;
+        const idx = (it.index !== undefined && it.index !== '') ? Number(it.index) : 0;
 
         const namesRow = el('div',{class:'names'});
         cycle.forEach((n,i)=>{
@@ -139,15 +80,11 @@
         });
 
         const btn = el('button',{class:'chk', onclick: async ()=>{
-          // optimistic UI update
           const next = (idx + 1) % cycle.length;
-          // disable during save
           btn.disabled = true; btn.textContent = 'Saving...';
           try{
             await apiPost(it.item, next);
-            celebrate();
-            // small delay so celebration visible then reload
-            setTimeout(loadAndRender, 600);
+            loadAndRender();
           }catch(err){
             alert('Save failed — try again.');
             btn.disabled = false; btn.textContent = 'Mark as bought';
@@ -163,13 +100,9 @@
 
         container.appendChild(card);
       });
-
     }
 
-    // initial load
     loadAndRender();
-
-    // optional: poll for updates every 12s so multiple users see updates quickly
     setInterval(loadAndRender, 12000);
   </script>
 </body>
