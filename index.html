@@ -28,12 +28,10 @@
     <p class="lead">The <strong>highlighted person</strong> is the one who needs to buy the item next. Click "Mark as bought" when they buy it.</p>
 
     <div id="items" class="items"></div>
-
-    <footer>Data stored in your Google Sheet. Everyone using this page will see the same state.</footer>
   </div>
 
   <script>
-    const API_BASE = 'https://script.google.com/macros/s/AKfycbyIwz9SfcHIHn_I5Z3hSdENS7R0ov6pTmjXfYWuDFAD0eQXloVQRUyGCUcQCtGPJDGW/exec'; // replace with your Apps Script URL
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbzE_damp1_8vTO1etjOE8NGw9YqXjZkCXF6P60F0Fb_i9CvssEPkJMTIaJ2hhFJNe0/exec'; // replace with your Apps Script URL
 
     async function apiGet() {
       const res = await fetch(API_BASE);
