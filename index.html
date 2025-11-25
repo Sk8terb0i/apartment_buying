@@ -1,137 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Apartment Purchase Tracker</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 2rem;
-      max-width: 700px;
-    }
-    h1 {
-      margin-bottom: 1rem;
-    }
-    .item {
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    .names {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 0.5rem;
-    }
-    .name {
-      padding: 0.3rem 0.6rem;
-      border-radius: 6px;
-      background: #eee;
-    }
-    .highlight {
-      background: #c3f3c3;
-      font-weight: bold;
-    }
-    button {
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+    :root{--card-bg:#ffffff;--muted:#666;--accent:#4caf50}
+    body{font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:#f7f7fb;margin:0;padding:24px;display:flex;justify-content:center}
+    .app{max-width:820px;width:100%}
+    h1{margin:0 0 8px}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    .items{display:grid;grid-template-columns:1fr;gap:12px}
+    .card{background:var(--card-bg);border-radius:10px;padding:14px;border:1px solid #e6e8ee;box-shadow:0 1px 2px rgba(16,24,40,0.03)}
+    .item-head{display:flex;justify-content:space-between;align-items:center}
+    .item-name{font-weight:600}
+    .names{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+    .name{padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#111;font-size:14px}
+    .name.current{background:linear-gradient(90deg,#dff7e0,#c3f3c3);box-shadow:0 2px 6px rgba(76,175,80,0.12);font-weight:700}
+    button.chk{background:linear-gradient(90deg,var(--accent),#2e8b57);color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .meta{color:var(--muted);font-size:13px}
+
+    /* horse celebration */
+    .horse-wrap{position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;overflow:hidden}
+    .horse{position:absolute;font-size:42px;transform:translateX(-120%);animation:run 1500ms linear forwards}
+    @keyframes run{0%{transform:translateX(-120%) translateY(0) rotate(0)}25%{transform:translateX(10%) translateY(-6px) rotate(-2deg)}50%{transform:translateX(50%) translateY(0) rotate(2deg)}75%{transform:translateX(90%) translateY(-6px) rotate(-1deg)}100%{transform:translateX(120%) translateY(0) rotate(0)}}
+
+    .confetti{position:absolute;left:50%;top:20%;width:12px;height:12px;opacity:0;animation:pop 800ms ease forwards}
+    @keyframes pop{0%{opacity:1;transform:translate(-50%,-20px) scale(0.6)}100%{opacity:1;transform:translate(calc(-50% + var(--x)),calc(-20px + var(--y))) scale(1)}}
+
+    .small{font-size:13px;color:var(--muted)}
+
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
   </style>
 </head>
 <body>
-  <h1>Apartment Purchase Tracker</h1>
+  <div class="app">
+    <h1>Apartment Purchase Tracker</h1>
+    <p class="lead">The <strong>highlighted person</strong> is the one who needs to buy the item next. Click "Mark as bought" when they buy it.</p>
 
-  <div id="items"></div>
+    <div id="items" class="items"></div>
+
+    <footer>Data stored in your Google Sheet. Everyone using this page will see the same state.</footer>
+  </div>
+
+  <div id="celebration" class="horse-wrap" aria-hidden="true"></div>
 
   <script>
-    const cycle = ["Egor", "Bodo", "Anastasiia", "Noe"];
+    // ----- CONFIG -----
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbwt_fwQood0Jlhy9DasWAdXrbJIXus9aVgph8Loo6Zp05HQUb_oR_hXDmef3PEKnegU/exec';
+    // ------------------
 
-    const items = [
-      { name: "Dish soap", index: 0 },
-      { name: "Hand soap", index: 0 },
-      { name: "Compost bags", index: 0 },
-      { name: "Zurich bags", index: 0 }
-    ];
-
-    async function loadState() {
-      try {
-        const res = await fetch("state.json?" + Date.now());
-        if (res.ok) {
-          const remote = await res.json();
-          remote.forEach((r, i) => {
-            items[i].index = r.index;
-          });
-        }
-      } catch (e) {
-        console.log("Could not load remote state, falling back to default.");
-      }
+    async function apiGet() {
+      const res = await fetch(API_BASE);
+      if (!res.ok) throw new Error('Failed to load from sheet');
+      return res.json();
     }
 
-    async function saveState() {
-      const newState = items.map(i => ({ index: i.index }));
-      await fetch("https://api.github.com/repos/USERNAME/REPO/contents/state.json", {
-        method: "PUT",
-        headers: {
-          "Authorization": "Bearer TOKEN",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          message: "Update tracker state",
-          content: btoa(JSON.stringify(newState, null, 2)),
-          sha: window.currentSha
-        })
+    async function apiPost(itemName, newIndex) {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({item: itemName, index: newIndex})
       });
+      if (!res.ok) throw new Error('Failed to save to sheet');
+      return res.json();
     }
 
-    async function getSha() {
-      const res = await fetch("https://api.github.com/repos/USERNAME/REPO/contents/state.json");
-      const data = await res.json();
-      window.currentSha = data.sha;
+    function el(tag, props={}, ...children){
+      const n = document.createElement(tag);
+      for (const k in props) {
+        if (k === 'class') n.className = props[k];
+        else if (k.startsWith('on')) n.addEventListener(k.slice(2), props[k]);
+        else n.setAttribute(k, props[k]);
+      }
+      for (const c of children) if (c) n.append(typeof c === 'string' ? document.createTextNode(c) : c);
+      return n;
     }
 
-    function render() {
-      const container = document.getElementById("items");
-      container.innerHTML = "";
+    function playHorseSound(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'square';
+        o.frequency.setValueAtTime(440, ctx.currentTime);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.14);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+        o.stop(ctx.currentTime + 0.55);
+      }catch(e){/* audio blocked or unavailable */}
+    }
 
-      items.forEach((item, i) => {
-        const div = document.createElement("div");
-        div.className = "item";
+    function celebrate() {
+      const wrap = document.getElementById('celebration');
+      // horse
+      const horse = el('div',{class:'horse'}, '🐎');
+      horse.style.top = (20 + Math.random()*60) + '%';
+      wrap.appendChild(horse);
 
-        const title = document.createElement("h2");
-        title.textContent = item.name;
+      // confetti bits
+      for(let i=0;i<18;i++){
+        const c = el('div',{class:'confetti'});
+        c.style.setProperty('--x', (Math.random()*240 - 120) + 'px');
+        c.style.setProperty('--y', (-200 + Math.random()*300) + 'px');
+        c.style.left = (50 + Math.random()*10 -5) + '%';
+        c.style.background = ['#f43f5e','#fb923c','#facc15','#10b981','#60a5fa'][Math.floor(Math.random()*5)];
+        c.style.borderRadius = (Math.random()*50)+'%';
+        c.style.width = (6 + Math.random()*10) + 'px';
+        c.style.height = (6 + Math.random()*10) + 'px';
+        wrap.appendChild(c);
+        // remove later
+        setTimeout(()=>c.remove(),900);
+      }
 
-        const namesRow = document.createElement("div");
-        namesRow.className = "names";
+      playHorseSound();
+      setTimeout(()=>horse.remove(),1600);
+    }
 
-        cycle.forEach((name, idx) => {
-          const n = document.createElement("div");
-          n.className = "name" + (idx === item.index ? " highlight" : "");
-          n.textContent = name;
-          namesRow.appendChild(n);
+    // Render
+    async function loadAndRender(){
+      const container = document.getElementById('items');
+      container.innerHTML = '';
+      let items;
+      try{ items = await apiGet(); }catch(e){ container.appendChild(el('div',{class:'card'}, el('div',{}, 'Could not load data — check your Apps Script deployment.'))); return }
+
+      items.forEach(it => {
+        const card = el('div',{class:'card'});
+        const head = el('div',{class:'item-head'}, el('div',{class:'item-name'}, it.item));
+
+        const cycle = Array.isArray(it.cycle) ? it.cycle : (typeof it.cycle === 'string' ? it.cycle.split(',') : []);
+        const idx = Number(it.index) || 0;
+
+        const namesRow = el('div',{class:'names'});
+        cycle.forEach((n,i)=>{
+          const cls = 'name' + (i===idx ? ' current' : '');
+          namesRow.appendChild(el('div',{class:cls}, n));
         });
 
-        const btn = document.createElement("button");
-        btn.textContent = "Mark as bought";
-        btn.onclick = async () => {
-          item.index = (item.index + 1) % cycle.length;
-          await saveState();
-          render();
-        };
+        const btn = el('button',{class:'chk', onclick: async ()=>{
+          // optimistic UI update
+          const next = (idx + 1) % cycle.length;
+          // disable during save
+          btn.disabled = true; btn.textContent = 'Saving...';
+          try{
+            await apiPost(it.item, next);
+            celebrate();
+            // small delay so celebration visible then reload
+            setTimeout(loadAndRender, 600);
+          }catch(err){
+            alert('Save failed — try again.');
+            btn.disabled = false; btn.textContent = 'Mark as bought';
+          }
+        }}, 'Mark as bought');
 
-        div.appendChild(title);
-        div.appendChild(namesRow);
-        div.appendChild(btn);
-        container.appendChild(div);
+        const meta = el('div',{class:'meta small'}, 'Next buyer: ' + (cycle[idx] || '—'));
+
+        head.appendChild(el('div',{}, btn));
+        card.appendChild(head);
+        card.appendChild(namesRow);
+        card.appendChild(meta);
+
+        container.appendChild(card);
       });
+
     }
 
-    (async () => {
-      await loadState();
-      await getSha();
-      render();
-    })();
+    // initial load
+    loadAndRender();
+
+    // optional: poll for updates every 12s so multiple users see updates quickly
+    setInterval(loadAndRender, 12000);
   </script>
 </body>
 </html>
