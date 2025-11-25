@@ -28,10 +28,12 @@
     <p class="lead">The <strong>highlighted person</strong> is the one who needs to buy the item next. Click "Mark as bought" when they buy it.</p>
 
     <div id="items" class="items"></div>
+
+    <footer>Data stored in your Google Sheet. Everyone using this page will see the same state.</footer>
   </div>
 
   <script>
-    const API_BASE = 'https://script.google.com/macros/s/AKfycbzE_damp1_8vTO1etjOE8NGw9YqXjZkCXF6P60F0Fb_i9CvssEPkJMTIaJ2hhFJNe0/exec'; // replace with your Apps Script URL
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbwa1jpRa6eWzJRwz9Nd4-gLYy7kqvfZus5AsdCk0-BZ9YDslkPRDh8Q6zgG1rPkFdU6/exec'; // replace with your Apps Script URL
 
     async function apiGet() {
       const res = await fetch(API_BASE);
@@ -78,7 +80,7 @@
         const head = el('div',{class:'item-head'}, el('div',{class:'item-name'}, it.item));
 
         const cycle = Array.isArray(it.cycle) ? it.cycle : it.cycle.split(',');
-        const idx = Number(it.index) || 0;
+        let idx = Number(it.index) || 0;
 
         const namesRow = el('div',{class:'names'});
         cycle.forEach((n,i)=>{
@@ -86,19 +88,28 @@
           namesRow.appendChild(el('div',{class:cls}, n));
         });
 
+        const meta = el('div',{class:'meta small'}, 'Next buyer: ' + (cycle[idx] || '—'));
+
         const btn = el('button',{class:'chk', onclick: async ()=>{
           const next = (idx + 1) % cycle.length;
-          btn.disabled = true; btn.textContent = 'Saving...';
+          btn.disabled = true;
+          btn.textContent = 'Saving...';
           try{
             await apiPost(it.item, next);
-            setTimeout(loadAndRender, 500);
+            // Update UI immediately
+            namesRow.querySelectorAll('.name').forEach((n,i)=>{
+              n.classList.toggle('current', i === next);
+            });
+            meta.textContent = 'Next buyer: ' + (cycle[next] || '—');
+            idx = next; // update local index
+            btn.disabled = false;
+            btn.textContent = 'Mark as bought';
           }catch(err){
             alert('Save failed — try again.');
-            btn.disabled = false; btn.textContent = 'Mark as bought';
+            btn.disabled = false; 
+            btn.textContent = 'Mark as bought';
           }
         }}, 'Mark as bought');
-
-        const meta = el('div',{class:'meta small'}, 'Next buyer: ' + (cycle[idx] || '—'));
 
         head.appendChild(el('div',{}, btn));
         card.appendChild(head);
