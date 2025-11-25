@@ -28,10 +28,13 @@
     <p class="lead">The <strong>highlighted person</strong> is the one who needs to buy the item next. Click "Mark as bought" when they buy it.</p>
 
     <div id="items" class="items"></div>
+
+    <footer>Data stored in your Google Sheet. Everyone using this page will see the same state.</footer>
   </div>
 
   <script>
-    const API_BASE = 'https://script.google.com/macros/s/AKfycbwoIH0xtmGmAbAt_FdWoK8mJ6WEb0seORGt-7E2VN4Edwco7WawI5a9i0aeHSIB3a-K/exec';
+    // Google Apps Script Web App URL (replace with your deployment URL)
+    const API_BASE = 'YOUR_GOOGLE_SHEET_WEB_APP_URL';
 
     async function apiGet() {
       const res = await fetch(API_BASE);
@@ -66,12 +69,17 @@
       let items;
       try{ items = await apiGet(); }catch(e){ container.appendChild(el('div',{class:'card'}, el('div',{}, 'Could not load data — check your Apps Script deployment.'))); return }
 
-      items.filter(it => it.item && it.cycle && it.cycle.length).forEach(it => {
+      // Ensure Toilet paper cycles Bodo -> Noe if not already present
+      if(!items.some(it=>it.item==='Toilet paper')){
+        items.push({item:'Toilet paper', index:0, cycle:['Bodo','Noe']});
+      }
+
+      items.forEach(it => {
         const card = el('div',{class:'card'});
         const head = el('div',{class:'item-head'}, el('div',{class:'item-name'}, it.item));
 
-        const cycle = Array.isArray(it.cycle) ? it.cycle : (typeof it.cycle === 'string' ? it.cycle.split(',') : []);
-        const idx = (it.index !== undefined && it.index !== '') ? Number(it.index) : 0;
+        const cycle = Array.isArray(it.cycle) ? it.cycle : (typeof it.cycle === 'string' ? it.cycle.split(',') : ['Egor','Bodo','Anastasiia','Noe']);
+        const idx = Number(it.index) || 0;
 
         const namesRow = el('div',{class:'names'});
         cycle.forEach((n,i)=>{
@@ -84,7 +92,7 @@
           btn.disabled = true; btn.textContent = 'Saving...';
           try{
             await apiPost(it.item, next);
-            loadAndRender();
+            setTimeout(loadAndRender, 600);
           }catch(err){
             alert('Save failed — try again.');
             btn.disabled = false; btn.textContent = 'Mark as bought';
