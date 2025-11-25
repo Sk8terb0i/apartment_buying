@@ -8,7 +8,7 @@
     body {
       font-family: Arial, sans-serif;
       margin: 2rem;
-      max-width: 600px;
+      max-width: 700px;
     }
     h1 {
       margin-bottom: 1rem;
@@ -17,7 +17,21 @@
       border: 1px solid #ccc;
       border-radius: 8px;
       padding: 1rem;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .names {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .name {
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      background: #eee;
+    }
+    .highlight {
+      background: #c3f3c3;
+      font-weight: bold;
     }
     button {
       padding: 0.5rem 1rem;
@@ -41,21 +55,40 @@
       { name: "Zurich bags", index: 0 }
     ];
 
-    function loadState() {
-      const saved = localStorage.getItem("purchaseState");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        parsed.forEach((p, i) => {
-          items[i].index = p.index;
-        });
+    async function loadState() {
+      try {
+        const res = await fetch("state.json?" + Date.now());
+        if (res.ok) {
+          const remote = await res.json();
+          remote.forEach((r, i) => {
+            items[i].index = r.index;
+          });
+        }
+      } catch (e) {
+        console.log("Could not load remote state, falling back to default.");
       }
     }
 
-    function saveState() {
-      localStorage.setItem(
-        "purchaseState",
-        JSON.stringify(items.map(i => ({ index: i.index })))
-      );
+    async function saveState() {
+      const newState = items.map(i => ({ index: i.index }));
+      await fetch("https://api.github.com/repos/USERNAME/REPO/contents/state.json", {
+        method: "PUT",
+        headers: {
+          "Authorization": "Bearer TOKEN",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: "Update tracker state",
+          content: btoa(JSON.stringify(newState, null, 2)),
+          sha: window.currentSha
+        })
+      });
+    }
+
+    async function getSha() {
+      const res = await fetch("https://api.github.com/repos/USERNAME/REPO/contents/state.json");
+      const data = await res.json();
+      window.currentSha = data.sha;
     }
 
     function render() {
@@ -69,27 +102,36 @@
         const title = document.createElement("h2");
         title.textContent = item.name;
 
-        const next = document.createElement("p");
-        next.textContent = "Next: " + cycle[item.index];
+        const namesRow = document.createElement("div");
+        namesRow.className = "names";
+
+        cycle.forEach((name, idx) => {
+          const n = document.createElement("div");
+          n.className = "name" + (idx === item.index ? " highlight" : "");
+          n.textContent = name;
+          namesRow.appendChild(n);
+        });
 
         const btn = document.createElement("button");
         btn.textContent = "Mark as bought";
-        btn.onclick = () => {
+        btn.onclick = async () => {
           item.index = (item.index + 1) % cycle.length;
-          saveState();
+          await saveState();
           render();
         };
 
         div.appendChild(title);
-        div.appendChild(next);
+        div.appendChild(namesRow);
         div.appendChild(btn);
-
         container.appendChild(div);
       });
     }
 
-    loadState();
-    render();
+    (async () => {
+      await loadState();
+      await getSha();
+      render();
+    })();
   </script>
 </body>
 </html>
