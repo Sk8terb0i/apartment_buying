@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apartment Purchase Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      max-width: 600px;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    .item {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Apartment Purchase Tracker</h1>
+
+  <div id="items"></div>
+
+  <script>
+    const cycle = ["Egor", "Bodo", "Anastasiia", "Noe"];
+
+    const items = [
+      { name: "Dish soap", index: 0 },
+      { name: "Hand soap", index: 0 },
+      { name: "Compost bags", index: 0 },
+      { name: "Zurich bags", index: 0 }
+    ];
+
+    function loadState() {
+      const saved = localStorage.getItem("purchaseState");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        parsed.forEach((p, i) => {
+          items[i].index = p.index;
+        });
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(
+        "purchaseState",
+        JSON.stringify(items.map(i => ({ index: i.index })))
+      );
+    }
+
+    function render() {
+      const container = document.getElementById("items");
+      container.innerHTML = "";
+
+      items.forEach((item, i) => {
+        const div = document.createElement("div");
+        div.className = "item";
+
+        const title = document.createElement("h2");
+        title.textContent = item.name;
+
+        const next = document.createElement("p");
+        next.textContent = "Next: " + cycle[item.index];
+
+        const btn = document.createElement("button");
+        btn.textContent = "Mark as bought";
+        btn.onclick = () => {
+          item.index = (item.index + 1) % cycle.length;
+          saveState();
+          render();
+        };
+
+        div.appendChild(title);
+        div.appendChild(next);
+        div.appendChild(btn);
+
+        container.appendChild(div);
+      });
+    }
+
+    loadState();
+    render();
+  </script>
+</body>
+</html>
