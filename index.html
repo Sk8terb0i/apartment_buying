@@ -21,35 +21,40 @@
     font-size: 1em;
   }
 
-  /* Container for the three main columns */
-  .columns-container {
+  /* Container for all rows */
+  .rows-container {
     display: flex;
+    flex-direction: column;
     gap: 10px;
-    width: max-content; /* container shrinks to fit columns */
+    width: max-content;
     margin: 0 auto;
   }
 
-  /* Each column */
+  /* Each row contains three columns */
+  .item-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  /* Columns inside a row */
   .column-box {
-    flex: 0 0 auto; /* shrink to content width */
-    padding: 15px;
+    padding: 10px;
     background-color: #fff;
     border-radius: 10px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    max-height: 80vh;
-    overflow-y: auto;
+    flex: 0 0 auto; /* shrink to content */
   }
 
   .column-label {
     background-color: #DA9EFF;
     color: white;
     font-weight: bold;
-    padding: 8px;
+    padding: 6px;
     border-radius: 8px 8px 0 0;
     text-align: center;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
   }
 
   .buyer-list span {
@@ -105,16 +110,8 @@
   <span>🐴 Hooray! Item Bought! 🐴</span>
 </div>
 
-<div class="columns-container">
-  <div class="column-box" id="itemColumn">
-    <div class="column-label">Item</div>
-  </div>
-  <div class="column-box" id="buyersColumn">
-    <div class="column-label">Next one to buy is highlighted</div>
-  </div>
-  <div class="column-box" id="boughtColumn">
-    <div class="column-label">Bought?</div>
-  </div>
+<div class="rows-container" id="rowsContainer">
+  <!-- Rows will be injected here -->
 </div>
 
 <script>
@@ -124,43 +121,34 @@ async function loadData() {
   const response = await fetch(backendUrl);
   const items = await response.json();
 
-  const itemCol = document.getElementById('itemColumn');
-  const buyersCol = document.getElementById('buyersColumn');
-  const boughtCol = document.getElementById('boughtColumn');
-
-  // Clear previous content except labels
-  itemCol.innerHTML = '<div class="column-label">Item</div>';
-  buyersCol.innerHTML = '<div class="column-label">Next one to buy is highlighted</div>';
-  boughtCol.innerHTML = '<div class="column-label">Bought?</div>';
+  const container = document.getElementById('rowsContainer');
+  container.innerHTML = '';
 
   items.forEach(item => {
-    // Item name
-    const itemDiv = document.createElement('div');
-    itemDiv.textContent = item.item;
-    itemDiv.style.margin = '8px 0';
-    itemCol.appendChild(itemDiv);
+    const row = document.createElement('div');
+    row.className = 'item-row';
 
-    // Buyers
-    const buyersDiv = document.createElement('div');
-    buyersDiv.className = 'buyer-list';
-    buyersDiv.innerHTML = item.people.map((p,i) => 
-      `<span class="${i===item.turnIndex?'current':''}">${p}</span>`
-    ).join('');
-    buyersDiv.style.margin = '8px 0';
-    buyersCol.appendChild(buyersDiv);
+    // Item column
+    const colItem = document.createElement('div');
+    colItem.className = 'column-box';
+    colItem.innerHTML = `<div class="column-label">Item</div>${item.item}`;
 
-    // Bought checkbox
-    const checkboxDiv = document.createElement('div');
+    // Buyers column
+    const colBuyers = document.createElement('div');
+    colBuyers.className = 'column-box';
+    colBuyers.innerHTML = `<div class="column-label">Next one to buy is highlighted</div>` +
+      `<div class="buyer-list">${item.people.map((p,i)=>`<span class="${i===item.turnIndex?'current':''}">${p}</span>`).join('')}</div>`;
+
+    // Bought column
+    const colBought = document.createElement('div');
+    colBought.className = 'column-box';
+    colBought.innerHTML = `<div class="column-label">Bought?</div>`;
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.dataset.item = item.item;
-    checkboxDiv.appendChild(checkbox);
-    checkboxDiv.style.margin = '8px 0';
-    checkboxDiv.style.display = 'flex';
-    checkboxDiv.style.justifyContent = 'center';
-    boughtCol.appendChild(checkboxDiv);
+    colBought.appendChild(checkbox);
 
-    checkbox.addEventListener('change', async (e) => {
+    checkbox.addEventListener('change', async e => {
       e.target.disabled = true;
       await fetch(backendUrl, {
         method: 'POST',
@@ -169,6 +157,12 @@ async function loadData() {
       showCelebration();
       loadData();
     });
+
+    row.appendChild(colItem);
+    row.appendChild(colBuyers);
+    row.appendChild(colBought);
+
+    container.appendChild(row);
   });
 }
 
