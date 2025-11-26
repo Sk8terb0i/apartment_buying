@@ -1,340 +1,142 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Apartment Purchase Cycle</title>
-
-  <!-- Simple modern UI styling (no external build) -->
-  <style>
-    :root{
-      --bg:#f7fafc; --card:#ffffff; --muted:#6b7280; --accent:#4f46e5; --success:#10b981;
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Apartment Purchase Cycle</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        padding: 20px;
+        max-width: 700px;
+        margin: auto;
     }
-    html,body{height:100%}
-    body{
-      margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background:var(--bg); color:#111827;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-      padding:28px;
+    .item {
+        background: white;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    .container{max-width:940px; margin:0 auto;}
-    header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px;}
-    h1{font-size:20px; margin:0;}
-    p.lead{margin:4px 0 0; color:var(--muted); font-size:13px;}
-    .controls{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
-    .card{background:var(--card); border-radius:12px; padding:14px; box-shadow:0 1px 2px rgba(16,24,40,0.04); margin-bottom:12px;}
-    .items{display:grid; gap:10px; margin-top:12px;}
-    .row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border-radius:10px;}
-    .row .left{min-width:0;}
-    .name{font-weight:700; font-size:15px;}
-    .next{color:var(--muted); margin-top:6px; font-size:13px;}
-    .people{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
-    .person{padding:6px 8px; border-radius:999px; background:#f3f4f6; font-size:13px;}
-    .person.current{background:linear-gradient(90deg, #eef2ff, #ede9fe); color:var(--accent); box-shadow:0 1px 0 rgba(79,70,229,0.06); font-weight:700;}
-    button.btn{background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer;}
-    button.ghost{background:transparent; border:1px solid #e6e9ef; color:#111827; padding:7px 10px;}
-    .small{font-size:13px; color:var(--muted);}
-    .muted{color:var(--muted)}
-    input[type=text]{padding:8px 10px; border-radius:8px; border:1px solid #e6e9ef; min-width:260px; font-size:14px}
-    .status{margin-top:8px; font-size:13px;}
-    pre.code{background:#0f172a;color:#e6edf3;padding:10px;border-radius:8px;overflow:auto;font-size:12px}
-    .footer{margin-top:18px; color:var(--muted); font-size:13px}
-    .hint{font-size:12px; color:#475569; margin-top:6px;}
-    @media (max-width:640px){
-      header{flex-direction:column; align-items:flex-start}
-      .controls{width:100%}
+    .item-name {
+        font-weight: bold;
+        margin-bottom: 8px;
     }
-  </style>
-
-  <!-- Papa Parse for robust CSV parsing -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    .cycle-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+    .person {
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: #e3e3e3;
+    }
+    .highlight {
+        background: #4f46e5;
+        color: white;
+        font-weight: bold;
+    }
+    button {
+        padding: 8px 14px;
+        background: #4f46e5;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #3730a3;
+    }
+</style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div>
-        <h1>Apartment purchase cycle</h1>
-        <p class="lead">Who's next to buy each item. Click <strong>Bought</strong> to advance the cycle for everyone.</p>
-      </div>
 
-      <div class="controls">
-        <!-- Display the CSV source (pre-filled) -->
-        <label class="small muted" for="csvUrl">Sheet CSV URL</label>
-        <input id="csvUrl" type="text" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vT5msEYqaYPEQUzUHbuMUqIdCS-eqVGgP12yz0oPEHxPoyG4T1NBZN_Rt8SvDMTJMjnnEiR-_Mz3EH7/pub?gid=0&single=true&output=csv" />
-        <button id="reloadBtn" class="ghost">Reload sheet</button>
-      </div>
-    </header>
+<h1>Apartment Purchase Cycle</h1>
 
-    <div id="main" class="card">
-      <div style="display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap">
-        <div>
-          <div class="small">Write-back (optional)</div>
-          <div class="hint">Paste your Google Apps Script Web App URL here to have the site update the sheet when items are marked Bought.</div>
-        </div>
+<div id="container">Loading…</div>
 
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input id="writeUrl" type="text" placeholder="Apps Script Web App URL (optional)" />
-          <button id="applyWrite" class="ghost">Save</button>
-        </div>
-      </div>
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5msEYqaYPEQUzUHbuMUqIdCS-eqVGgP12yz0oPEHxPoyG4T1NBZN_Rt8SvDMTJMjnnEiR-_Mz3EH7/pub?gid=0&single=true&output=csv";
 
-      <div id="status" class="status small muted" style="margin-top:12px">Loading sheet...</div>
+const UPDATE_URL = "https://script.google.com/macros/s/AKfycbwo2qU3FJ6s0D6FgDOhk04EJvWpoyjM5TSYIpYJSC0tKJJw7pktWne85X12iHn3U0zk/exec";
 
-      <div id="items" class="items" aria-live="polite"></div>
+async function loadCSV() {
+    const response = await fetch(CSV_URL);
+    const text = await response.text();
+    const rows = text.trim().split("\n").map(r => r.split(","));
+    const header = rows[0];
+    return rows.slice(1).map(r => ({
+        item: r[0],
+        index: parseInt(r[1]),
+        cycle: r[2].split(",")
+    }));
+}
 
-      <div style="margin-top:10px" class="hint">
-        <strong>Notes:</strong> The sheet must be published to the web as CSV (File → Share → Publish to web → CSV). The app expects the sheet columns as:
-        <pre class="code">Item, Index, Name1, Name2, Name3, ...</pre>
-        Example row (cells): <code>Dish soap</code> | <code>2</code> | <code>Egor</code> | <code>Bodo</code> | <code>Anastasiia</code> | <code>Noe</code>
-      </div>
-    </div>
+async function updateIndex(itemName, newIndex) {
+    await fetch(UPDATE_URL, {
+        method: "POST",
+        body: JSON.stringify({ item: itemName, index: newIndex }),
+        headers: { "Content-Type": "application/json" }
+    });
+}
 
-    <div class="footer">
-      Deploy: save this file as <code>index.html</code> in a GitHub repo and enable GitHub Pages (branch: main / folder: root).
-    </div>
-  </div>
+function render(items) {
+    const container = document.getElementById("container");
+    container.innerHTML = "";
 
-  <script>
-    // ------- Configuration -------
-    // The CSV URL is prefilled above. You can change it in the input box.
-    // When writeback is enabled, the app will POST JSON { item: "...", nextIndex: <number> } to the Apps Script endpoint.
-    // Apps Script code example is shown below (also available in the UI).
-    // -----------------------------
+    items.forEach((it, idx) => {
+        const div = document.createElement("div");
+        div.className = "item";
 
-    const csvInput = document.getElementById('csvUrl');
-    const reloadBtn = document.getElementById('reloadBtn');
-    const itemsEl = document.getElementById('items');
-    const statusEl = document.getElementById('status');
-    const writeUrlInput = document.getElementById('writeUrl');
-    const applyWriteBtn = document.getElementById('applyWrite');
+        const left = document.createElement("div");
 
-    let items = []; // { item, index, cycle: [] }
-    let writeEndpoint = '';
+        const itemName = document.createElement("div");
+        itemName.className = "item-name";
+        itemName.textContent = it.item;
+        left.appendChild(itemName);
 
-    // Utility: show temporary message
-    function setStatus(msg, isError) {
-      statusEl.textContent = msg;
-      statusEl.style.color = isError ? '#b91c1c' : '#374151';
-    }
+        const cycleRow = document.createElement("div");
+        cycleRow.className = "cycle-row";
 
-    // Parse the CSV content (uses PapaParse)
-    function parseRows(data) {
-      // PapaParse returns array of arrays
-      const rows = data.data || [];
-      if (!rows.length) return [];
-      // Assume first row is header
-      const dataRows = rows.slice(1).filter(r => r.length && r.some(c => c !== null && String(c).trim() !== ''));
-      const out = dataRows.map(row => {
-        const item = (row[0] !== undefined && row[0] !== null) ? String(row[0]).trim() : '';
-        const index = (row[1] !== undefined && row[1] !== null && row[1] !== '') ? parseInt(row[1], 10) : 0;
-        // cycle: everything from column 3 onwards; filter empty strings
-        const cycle = row.slice(2).map(c => c === null ? '' : String(c).trim()).filter(Boolean);
-        return { item, index: Number.isNaN(index) ? 0 : index, cycle };
-      });
-      return out;
-    }
-
-    async function loadSheet(url) {
-      setStatus('Loading sheet...');
-      itemsEl.innerHTML = '';
-      try {
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
-        const text = await res.text();
-        // parse via Papa Parse (handles quotes, commas robustly)
-        const parsed = Papa.parse(text, { skipEmptyLines: true });
-        items = parseRows(parsed);
-        if (!items.length) {
-          setStatus('Sheet parsed but no data rows found. Check CSV format.', true);
-        } else {
-          setStatus('Loaded ' + items.length + ' items.');
-        }
-        renderItems();
-      } catch (err) {
-        console.error(err);
-        setStatus('Error loading sheet: ' + err.message, true);
-      }
-    }
-
-    function renderItems() {
-      itemsEl.innerHTML = '';
-      items.forEach((it, idx) => {
-        const row = document.createElement('div');
-        row.className = 'card row';
-        row.style.display='flex';
-        row.style.alignItems='center';
-        row.style.justifyContent='space-between';
-
-        const left = document.createElement('div');
-        left.className='left';
-        left.style.minWidth='0';
-
-        const title = document.createElement('div');
-        title.className='name';
-        title.textContent = it.item || '(no name)';
-        left.appendChild(title);
-
-        const nextName = (it.cycle && it.cycle.length) ? it.cycle[it.index % it.cycle.length] : '(no cycle)';
-        const sub = document.createElement('div');
-        sub.className='next';
-        sub.innerHTML = 'Next: <span style="font-weight:700; color:var(--accent)">' + escapeHtml(nextName) + '</span>';
-        left.appendChild(sub);
-
-        const people = document.createElement('div');
-        people.className='people';
-        (it.cycle || []).forEach((p, pidx) => {
-          const span = document.createElement('div');
-          span.className = 'person' + (pidx === (it.index % Math.max(1, it.cycle.length)) ? ' current' : '');
-          span.textContent = p;
-          people.appendChild(span);
+        it.cycle.forEach((name, i) => {
+            const span = document.createElement("span");
+            span.className = "person";
+            if (i === it.index) span.classList.add("highlight");
+            span.textContent = name;
+            cycleRow.appendChild(span);
         });
-        left.appendChild(people);
 
-        row.appendChild(left);
+        left.appendChild(cycleRow);
+        div.appendChild(left);
 
-        const right = document.createElement('div');
-        right.style.display='flex';
-        right.style.gap='10px';
-        right.style.alignItems='center';
+        const btn = document.createElement("button");
+        btn.textContent = "Bought";
+        btn.onclick = async () => {
+            const newIndex = (it.index + 1) % it.cycle.length;
+            it.index = newIndex;
+            await updateIndex(it.item, newIndex);
+            render(items);
+        };
 
-        const boughtBtn = document.createElement('button');
-        boughtBtn.className='btn';
-        boughtBtn.textContent = 'Bought';
-        boughtBtn.title = 'Mark as bought and advance the cycle';
-        boughtBtn.onclick = () => onBought(idx, boughtBtn);
-        right.appendChild(boughtBtn);
+        div.appendChild(btn);
 
-        // quick show current index for transparency
-        const idxBadge = document.createElement('div');
-        idxBadge.className='small muted';
-        idxBadge.style.fontSize='12px';
-        idxBadge.textContent = 'Index: ' + it.index;
-        right.appendChild(idxBadge);
-
-        row.appendChild(right);
-
-        itemsEl.appendChild(row);
-      });
-    }
-
-    function escapeHtml(text) {
-      return String(text).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
-    }
-
-    async function onBought(itemIdx, btn) {
-      btn.disabled = true;
-      const it = items[itemIdx];
-      if (!it) { setStatus('Internal error: item missing', true); btn.disabled=false; return; }
-      if (!it.cycle || !it.cycle.length) {
-        setStatus('No cycle defined for "'+it.item+'"', true); btn.disabled=false; return;
-      }
-
-      // advance locally immediately for responsiveness
-      it.index = (it.index + 1) % it.cycle.length;
-      renderItems();
-      setStatus('Advanced "' + it.item + '" to ' + (it.cycle[it.index] || '(unknown)') + '.');
-
-      // If write endpoint configured, POST to it to persist change
-      const endpoint = writeUrlInput.value.trim() || writeEndpoint;
-      if (endpoint) {
-        try {
-          const payload = { item: it.item, nextIndex: it.index };
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          // Apps Script usually returns JSON; attempt to parse
-          let ok = true;
-          if (res.ok) {
-            try {
-              const j = await res.json();
-              // If response contains ok:false, show message
-              if (j && j.ok === false) { ok = false; setStatus('Write-back error: ' + (j.error || 'unknown'), true); }
-            } catch(e) {
-              // non-JSON response — still accept 200
-            }
-            if (ok) setStatus('Updated sheet for "'+it.item+'".');
-          } else {
-            setStatus('Write-back failed: ' + res.status + ' ' + res.statusText, true);
-          }
-        } catch (err) {
-          console.error(err);
-          setStatus('Write-back failed: ' + err.message, true);
-        }
-      }
-
-      // re-enable button after short delay to avoid double clicks
-      setTimeout(()=>btn.disabled=false, 500);
-    }
-
-    // Save write endpoint locally (so page reload keeps it)
-    applyWriteBtn.addEventListener('click', () => {
-      writeEndpoint = writeUrlInput.value.trim();
-      if (writeEndpoint) {
-        localStorage.setItem('apt_write_endpoint', writeEndpoint);
-        setStatus('Write-back endpoint saved (local storage).');
-      } else {
-        localStorage.removeItem('apt_write_endpoint');
-        setStatus('Write-back endpoint cleared.');
-      }
+        container.appendChild(div);
     });
+}
 
-    reloadBtn.addEventListener('click', () => {
-      loadSheet(csvInput.value.trim());
-    });
+async function init() {
+    const items = await loadCSV();
+    render(items);
+}
 
-    // initialize
-    (function init(){
-      // load saved write endpoint
-      const saved = localStorage.getItem('apt_write_endpoint');
-      if (saved) { writeEndpoint = saved; writeUrlInput.value = saved; }
+init();
+</script>
 
-      // load CSV initially from input value
-      const initialUrl = csvInput.value.trim();
-      if (!initialUrl) {
-        setStatus('Paste your published CSV URL (see instructions) and click Reload sheet.', true);
-      } else {
-        loadSheet(initialUrl);
-      }
-    })();
-
-    // --- Apps Script snippet for write-back (copy/paste into Apps Script) ---
-    // If you want to enable the "Write-back (optional)" feature above, create a bound script:
-    //
-    // 1) In Sheets: Extensions → Apps Script
-    // 2) Replace Code.gs with below and Deploy → New Deployment → Web app
-    //    Execute as: Me, Who has access: Anyone (or Anyone with Google account)
-    //
-    /* Apps Script example:
-    function doGet(e){
-      return ContentService.createTextOutput(JSON.stringify({ok:true,"msg":"alive"})).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    function doPost(e){
-      try {
-        var body = e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
-        var itemName = body.item;
-        var nextIndex = parseInt(body.nextIndex, 10);
-        if (!itemName || isNaN(nextIndex)) {
-          return ContentService.createTextOutput(JSON.stringify({ok:false,error:"missing fields"})).setMimeType(ContentService.MimeType.JSON);
-        }
-        var ss = SpreadsheetApp.getActiveSpreadsheet();
-        var sheet = ss.getActiveSheet(); // or ss.getSheetByName("Sheet1");
-        var values = sheet.getDataRange().getValues();
-        for (var r = 1; r < values.length; r++) {
-          var rowItem = values[r][0];
-          if (String(rowItem).trim() === String(itemName).trim()) {
-            sheet.getRange(r+1, 2).setValue(nextIndex);
-            return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
-          }
-        }
-        return ContentService.createTextOutput(JSON.stringify({ok:false,error:"item not found"})).setMimeType(ContentService.MimeType.JSON);
-      } catch (err) {
-        return ContentService.createTextOutput(JSON.stringify({ok:false,error:err.toString()})).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-    */
-  </script>
 </body>
 </html>
