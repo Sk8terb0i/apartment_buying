@@ -21,8 +21,8 @@
     font-size: 1em;
   }
 
-  /* Container for all rows */
-  .rows-container {
+  /* Container for the entire tracker */
+  .tracker-container {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -30,13 +30,28 @@
     margin: 0 auto;
   }
 
-  /* Each row contains three columns */
+  /* Header row for labels */
+  .header-row {
+    display: flex;
+    gap: 10px;
+    font-weight: bold;
+  }
+
+  .header-box {
+    padding: 10px;
+    background-color: #DA9EFF;
+    color: white;
+    border-radius: 10px 10px 0 0;
+    text-align: center;
+    flex: 0 0 auto; /* shrink to content */
+  }
+
+  /* Each item row */
   .item-row {
     display: flex;
     gap: 10px;
   }
 
-  /* Columns inside a row */
   .column-box {
     padding: 10px;
     background-color: #fff;
@@ -45,16 +60,6 @@
     display: flex;
     flex-direction: column;
     flex: 0 0 auto; /* shrink to content */
-  }
-
-  .column-label {
-    background-color: #DA9EFF;
-    color: white;
-    font-weight: bold;
-    padding: 6px;
-    border-radius: 8px 8px 0 0;
-    text-align: center;
-    margin-bottom: 6px;
   }
 
   .buyer-list span {
@@ -74,6 +79,7 @@
     transform: scale(1.3);
     cursor: pointer;
     margin: 8px 0;
+    align-self: center;
   }
 
   /* Celebration popup */
@@ -104,14 +110,22 @@
 </head>
 <body>
 <h1>Apartment Shopping Tracker</h1>
-<div class="subtitle">Click the checkmark when you buy an item; the next person to buy is highlighted in lavender.</div>
+<div class="subtitle">Click the checkmark when you buy an item; the next person to buy is highlighted.</div>
 
 <div id="celebration">
   <span>🐴 Hooray! Item Bought! 🐴</span>
 </div>
 
-<div class="rows-container" id="rowsContainer">
+<div class="tracker-container">
+  <!-- Header row -->
+  <div class="header-row">
+    <div class="header-box">Item</div>
+    <div class="header-box">Next one to buy is highlighted</div>
+    <div class="header-box">Bought?</div>
+  </div>
+
   <!-- Rows will be injected here -->
+  <div id="rowsContainer"></div>
 </div>
 
 <script>
@@ -131,30 +145,29 @@ async function loadData() {
     // Item column
     const colItem = document.createElement('div');
     colItem.className = 'column-box';
-    colItem.innerHTML = `<div class="column-label">Item</div>${item.item}`;
+    colItem.textContent = item.item;
 
     // Buyers column
     const colBuyers = document.createElement('div');
     colBuyers.className = 'column-box';
-    colBuyers.innerHTML = `<div class="column-label">Next one to buy is highlighted</div>` +
-      `<div class="buyer-list">${item.people.map((p,i)=>`<span class="${i===item.turnIndex?'current':''}">${p}</span>`).join('')}</div>`;
+    colBuyers.innerHTML = `<div class="buyer-list">${item.people.map((p,i)=>`<span class="${i===item.turnIndex?'current':''}">${p}</span>`).join('')}</div>`;
 
     // Bought column
     const colBought = document.createElement('div');
     colBought.className = 'column-box';
-    colBought.innerHTML = `<div class="column-label">Bought?</div>`;
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.dataset.item = item.item;
     colBought.appendChild(checkbox);
 
+    // Checkbox listener
     checkbox.addEventListener('change', async e => {
+      showCelebration(); // show immediately
       e.target.disabled = true;
       await fetch(backendUrl, {
         method: 'POST',
         body: JSON.stringify({ item: item.item })
       });
-      showCelebration();
       loadData();
     });
 
