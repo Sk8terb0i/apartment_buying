@@ -4,18 +4,63 @@
 <meta charset="UTF-8">
 <title>Apartment Shopping Tracker</title>
 <style>
-  table { border-collapse: collapse; width: 50%; margin: 20px; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-  .highlight { background-color: #a0ffa0; }
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #333;
+  }
+  table {
+    border-collapse: collapse;
+    width: 80%;
+    margin: 20px auto;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 12px 15px;
+    text-align: left;
+  }
+  th {
+    background-color: #4CAF50;
+    color: white;
+  }
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  .highlight {
+    background-color: #a0ffa0;
+    font-weight: bold;
+  }
+  .buyer-list span {
+    padding: 3px 6px;
+    margin-right: 5px;
+    border-radius: 4px;
+    background-color: #eee;
+  }
+  .buyer-list .current {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+  }
+  input[type=checkbox] {
+    transform: scale(1.3);
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
-<h1>Shopping Tracker</h1>
+<h1>Apartment Shopping Tracker</h1>
 <table id="itemsTable">
   <thead>
     <tr>
       <th>Item</th>
-      <th>Next Buyer</th>
+      <th>Buyers</th>
       <th>Bought?</th>
     </tr>
   </thead>
@@ -33,27 +78,39 @@ async function loadData() {
 
   items.forEach(item => {
     const tr = document.createElement('tr');
-    const nextBuyer = item.people[item.turnIndex];
+
+    // Create buyer list HTML
+    const buyersHtml = item.people.map((p, i) => 
+      `<span class="${i === item.turnIndex ? 'current' : ''}">${p}</span>`
+    ).join('');
+
     tr.innerHTML = `
       <td>${item.item}</td>
-      <td class="highlight">${nextBuyer}</td>
+      <td class="buyer-list">${buyersHtml}</td>
       <td><input type="checkbox" data-item="${item.item}"></td>
     `;
     tbody.appendChild(tr);
   });
 
+  // Add event listeners
   document.querySelectorAll('input[type=checkbox]').forEach(cb => {
     cb.addEventListener('change', async (e) => {
       const itemName = e.target.dataset.item;
+      e.target.disabled = true; // prevent double click while updating
+
+      // POST to backend to update the turn
       await fetch(backendUrl, {
         method: 'POST',
         body: JSON.stringify({ item: itemName })
       });
-      loadData(); // Refresh table
+
+      // Immediately reload data to show updated buyer
+      loadData();
     });
   });
 }
 
+// Initial load
 loadData();
 </script>
 </body>
