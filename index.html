@@ -1,81 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Apartment Purchase Cycle</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f5f5f5;
-        padding: 20px;
-        max-width: 700px;
-        margin: auto;
-    }
-    h1 { text-align:center; margin-bottom:25px; }
-    .item {
-        background: white;
-        padding: 15px;
-        margin-bottom: 15px;
-        border-radius: 12px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .item-name {
-        font-weight: bold;
-        margin-bottom: 8px;
-    }
-    .cycle-row {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    .person {
-        padding: 4px 8px;
-        border-radius: 6px;
-        background: #e3e3e3;
-    }
-    .highlight {
-        background: #2563eb;
-        color: white;
-        font-weight: bold;
-    }
-    button {
-        padding: 8px 14px;
-        background: #2563eb;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-    button:hover {
-        background: #1d4ed8;
-    }
+body { font-family: Arial; background: #f5f5f5; padding: 20px; max-width: 700px; margin:auto; }
+h1 { text-align:center; margin-bottom:25px; }
+.item { background:white; padding:15px; margin-bottom:15px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); display:flex; justify-content:space-between; align-items:center;}
+.item-name { font-weight:bold; margin-bottom:8px; }
+.cycle-row { display:flex; gap:10px; flex-wrap:wrap; }
+.person { padding:4px 8px; border-radius:6px; background:#e3e3e3; }
+.highlight { background:#2563eb; color:white; font-weight:bold; }
+button { padding:8px 14px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer;}
+button:hover { background:#1d4ed8; }
 </style>
 </head>
 <body>
 
 <h1>Apartment Purchase Cycle</h1>
-
 <div id="container">Loading…</div>
 
 <script>
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5msEYqaYPEQUzUHbuMUqIdCS-eqVGgP12yz0oPEHxPoyG4T1NBZN_Rt8SvDMTJMjnnEiR-_Mz3EH7/pub?gid=0&single=true&output=csv";
+const UPDATE_URL = "https://script.google.com/macros/s/AKfycbwq2L71M-sc-HryAquMcWjB_w9Y98lsjpktGoLIqVKVIS8AHrHFOPuDScx8j58IJGB9/exec";
 
-const UPDATE_URL = "https://script.google.com/macros/s/AKfycbwo2qU3FJ6s0D6FgDOhk04EJvWpoyjM5TSYIpYJSC0tKJJw7pktWne85X12iHn3U0zk/exec";
-
-// Add timestamp to avoid CSV caching
+// Load CSV with cache-buster
 async function loadCSV() {
-    const response = await fetch(CSV_URL + "&cachebuster=" + Date.now());
-    const text = await response.text();
+    const res = await fetch(CSV_URL + "&cachebuster=" + Date.now());
+    const text = await res.text();
     const rows = text.trim().split("\n").map(r => r.split(","));
-    const header = rows[0];
     return rows.slice(1).map(r => ({
-        item: r[0].replace(/"/g, "").trim(),
-        index: parseInt(r[1].replace(/"/g, "").trim()) || 0,
-        cycle: r[2].replace(/"/g, "").trim().split(",").map(n => n.trim())
+        item: r[0].replace(/"/g,"").trim(),
+        index: parseInt(r[1].replace(/"/g,"").trim()) || 0,
+        cycle: r[2].replace(/"/g,"").trim().split(",").map(n => n.trim())
     }));
 }
 
@@ -83,63 +41,56 @@ async function updateIndex(itemName, newIndex) {
     try {
         await fetch(UPDATE_URL, {
             method: "POST",
-            body: JSON.stringify({ item: itemName, index: newIndex }),
-            headers: { "Content-Type": "application/json" }
+            body: JSON.stringify({ item:itemName, index:newIndex }),
+            headers: { "Content-Type":"application/json" }
         });
     } catch(err) {
         console.error("Update failed:", err);
-        alert("Failed to update sheet. Check console.");
+        alert("Failed to update sheet. Check Apps Script CORS settings and console.");
     }
 }
 
-function render(items) {
+function render(items){
     const container = document.getElementById("container");
     container.innerHTML = "";
-
     items.forEach(it => {
         const div = document.createElement("div");
         div.className = "item";
 
         const left = document.createElement("div");
-
-        const itemName = document.createElement("div");
-        itemName.className = "item-name";
-        itemName.textContent = it.item;
-        left.appendChild(itemName);
+        const nameEl = document.createElement("div");
+        nameEl.className = "item-name";
+        nameEl.textContent = it.item;
+        left.appendChild(nameEl);
 
         const cycleRow = document.createElement("div");
         cycleRow.className = "cycle-row";
-
-        it.cycle.forEach((name, i) => {
+        it.cycle.forEach((n,i)=>{
             const span = document.createElement("span");
             span.className = "person";
-            if (i === it.index) span.classList.add("highlight");
-            span.textContent = name;
+            if(i === it.index) span.classList.add("highlight");
+            span.textContent = n;
             cycleRow.appendChild(span);
         });
-
         left.appendChild(cycleRow);
         div.appendChild(left);
 
         const btn = document.createElement("button");
-        btn.textContent = "Bought it :)";
-        btn.onclick = async () => {
+        btn.textContent = "Bought";
+        btn.onclick = async ()=>{
             it.index = (it.index + 1) % it.cycle.length;
-            await updateIndex(it.item, it.index);
+            await updateIndex(it.item,it.index);
             render(items);
         };
-
         div.appendChild(btn);
-
         container.appendChild(div);
     });
 }
 
-async function init() {
+async function init(){
     const items = await loadCSV();
     render(items);
 }
-
 init();
 </script>
 
