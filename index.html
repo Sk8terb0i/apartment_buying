@@ -12,20 +12,26 @@
   h1 {
     text-align: center;
     color: #333;
+    margin-bottom: 5px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #555;
     margin-bottom: 30px;
+    font-size: 1em;
   }
 
   /* Container for the three main columns */
   .columns-container {
     display: flex;
     gap: 10px;
-    width: 90%;
+    width: max-content; /* container shrinks to fit columns */
     margin: 0 auto;
   }
 
   /* Each column */
   .column-box {
-    flex: 1;
+    flex: 0 0 auto; /* shrink to content width */
     padding: 15px;
     background-color: #fff;
     border-radius: 10px;
@@ -34,12 +40,6 @@
     flex-direction: column;
     max-height: 80vh;
     overflow-y: auto;
-  }
-
-  /* Narrow Bought? column */
-  .bought-column {
-    flex: 0 0 80px; /* fixed width for checkboxes */
-    align-items: center;
   }
 
   .column-label {
@@ -99,6 +99,7 @@
 </head>
 <body>
 <h1>Apartment Shopping Tracker</h1>
+<div class="subtitle">Click the checkmark when you buy an item; the next person to buy is highlighted in lavender.</div>
 
 <div id="celebration">
   <span>🐴 Hooray! Item Bought! 🐴</span>
@@ -111,7 +112,7 @@
   <div class="column-box" id="buyersColumn">
     <div class="column-label">Next one to buy is highlighted</div>
   </div>
-  <div class="column-box bought-column" id="boughtColumn">
+  <div class="column-box" id="boughtColumn">
     <div class="column-label">Bought?</div>
   </div>
 </div>
@@ -127,7 +128,7 @@ async function loadData() {
   const buyersCol = document.getElementById('buyersColumn');
   const boughtCol = document.getElementById('boughtColumn');
 
-  // Clear previous content except the labels
+  // Clear previous content except labels
   itemCol.innerHTML = '<div class="column-label">Item</div>';
   buyersCol.innerHTML = '<div class="column-label">Next one to buy is highlighted</div>';
   boughtCol.innerHTML = '<div class="column-label">Bought?</div>';
@@ -139,7 +140,7 @@ async function loadData() {
     itemDiv.style.margin = '8px 0';
     itemCol.appendChild(itemDiv);
 
-    // Buyers list
+    // Buyers
     const buyersDiv = document.createElement('div');
     buyersDiv.className = 'buyer-list';
     buyersDiv.innerHTML = item.people.map((p,i) => 
@@ -159,7 +160,6 @@ async function loadData() {
     checkboxDiv.style.justifyContent = 'center';
     boughtCol.appendChild(checkboxDiv);
 
-    // Checkbox listener
     checkbox.addEventListener('change', async (e) => {
       e.target.disabled = true;
       await fetch(backendUrl, {
