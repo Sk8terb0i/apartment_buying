@@ -2,97 +2,53 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Apartment Purchase Cycle</title>
+<title>Apartment Shopping Tracker</title>
 <style>
-body { font-family: Arial; background: #f5f5f5; padding: 20px; max-width: 700px; margin:auto; }
-h1 { text-align:center; margin-bottom:25px; }
-.item { background:white; padding:15px; margin-bottom:15px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); display:flex; justify-content:space-between; align-items:center;}
-.item-name { font-weight:bold; margin-bottom:8px; }
-.cycle-row { display:flex; gap:10px; flex-wrap:wrap; }
-.person { padding:4px 8px; border-radius:6px; background:#e3e3e3; }
-.highlight { background:#2563eb; color:white; font-weight:bold; }
-button { padding:8px 14px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer;}
-button:hover { background:#1d4ed8; }
+  table { border-collapse: collapse; width: 50%; margin: 20px; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  .highlight { background-color: #a0ffa0; }
 </style>
 </head>
 <body>
-
-<h1>Apartment Purchase Cycle</h1>
-<div id="container">Loading…</div>
+<h1>Shopping Tracker</h1>
+<table id="itemsTable">
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Next Buyer</th>
+      <th>Bought?</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
 <script>
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5msEYqaYPEQUzUHbuMUqIdCS-eqVGgP12yz0oPEHxPoyG4T1NBZN_Rt8SvDMTJMjnnEiR-_Mz3EH7/pub?gid=0&single=true&output=csv";
-const UPDATE_URL = "https://script.google.com/macros/s/AKfycbwq2L71M-sc-HryAquMcWjB_w9Y98lsjpktGoLIqVKVIS8AHrHFOPuDScx8j58IJGB9/exec";
+const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT5msEYqaYPEQUzUHbuMUqIdCS-eqVGgP12yz0oPEHxPoyG4T1NBZN_Rt8SvDMTJMjnnEiR-_Mz3EH7/pub?output=csv';
 
-// Load CSV with cache-buster
-async function loadCSV() {
-    const res = await fetch(CSV_URL + "&cachebuster=" + Date.now());
-    const text = await res.text();
-    const rows = text.trim().split("\n").map(r => r.split(","));
-    return rows.slice(1).map(r => ({
-        item: r[0].replace(/"/g,"").trim(),
-        index: parseInt(r[1].replace(/"/g,"").trim()) || 0,
-        cycle: r[2].replace(/"/g,"").trim().split(",").map(n => n.trim())
-    }));
+async function loadData() {
+  const response = await fetch(sheetUrl);
+  const csvText = await response.text();
+  const rows = csvText.trim().split('\n').map(r => r.split(','));
+  const tbody = document.querySelector('#itemsTable tbody');
+  tbody.innerHTML = '';
+
+  for (let i = 1; i < rows.length; i++) {
+    const [item, peopleStr, turnIndexStr] = rows[i];
+    const people = peopleStr.split(';');
+    const turnIndex = parseInt(turnIndexStr);
+    const nextBuyer = people[turnIndex];
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item}</td>
+      <td class="highlight">${nextBuyer}</td>
+      <td><input type="checkbox" data-item="${item}"></td>
+    `;
+    tbody.appendChild(tr);
+  }
 }
 
-async function updateIndex(itemName, newIndex) {
-    try {
-        await fetch(UPDATE_URL, {
-            method: "POST",
-            body: JSON.stringify({ item:itemName, index:newIndex }),
-            headers: { "Content-Type":"application/json" }
-        });
-    } catch(err) {
-        console.error("Update failed:", err);
-        alert("Failed to update sheet. Check Apps Script CORS settings and console.");
-    }
-}
-
-function render(items){
-    const container = document.getElementById("container");
-    container.innerHTML = "";
-    items.forEach(it => {
-        const div = document.createElement("div");
-        div.className = "item";
-
-        const left = document.createElement("div");
-        const nameEl = document.createElement("div");
-        nameEl.className = "item-name";
-        nameEl.textContent = it.item;
-        left.appendChild(nameEl);
-
-        const cycleRow = document.createElement("div");
-        cycleRow.className = "cycle-row";
-        it.cycle.forEach((n,i)=>{
-            const span = document.createElement("span");
-            span.className = "person";
-            if(i === it.index) span.classList.add("highlight");
-            span.textContent = n;
-            cycleRow.appendChild(span);
-        });
-        left.appendChild(cycleRow);
-        div.appendChild(left);
-
-        const btn = document.createElement("button");
-        btn.textContent = "Bought";
-        btn.onclick = async ()=>{
-            it.index = (it.index + 1) % it.cycle.length;
-            await updateIndex(it.item,it.index);
-            render(items);
-        };
-        div.appendChild(btn);
-        container.appendChild(div);
-    });
-}
-
-async function init(){
-    const items = await loadCSV();
-    render(items);
-}
-init();
+loadData();
 </script>
-
 </body>
 </html>
