@@ -23,29 +23,35 @@
 </table>
 
 <script>
-const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT5msEYqaYPEQUzUHbuMUqIdCS-eqVGgP12yz0oPEHxPoyG4T1NBZN_Rt8SvDMTJMjnnEiR-_Mz3EH7/pub?output=csv';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbxv_FLPn0E8JU_ElVZ2pxZ32VNYdSELPY6CXOl4JGigbc1iwx2qHSUotz_O0GKC9oJU/exec';
 
 async function loadData() {
-  const response = await fetch(sheetUrl);
-  const csvText = await response.text();
-  const rows = csvText.trim().split('\n').map(r => r.split(','));
+  const response = await fetch(backendUrl);
+  const items = await response.json();
   const tbody = document.querySelector('#itemsTable tbody');
   tbody.innerHTML = '';
 
-  for (let i = 1; i < rows.length; i++) {
-    const [item, peopleStr, turnIndexStr] = rows[i];
-    const people = peopleStr.split(';');
-    const turnIndex = parseInt(turnIndexStr);
-    const nextBuyer = people[turnIndex];
-
+  items.forEach(item => {
     const tr = document.createElement('tr');
+    const nextBuyer = item.people[item.turnIndex];
     tr.innerHTML = `
-      <td>${item}</td>
+      <td>${item.item}</td>
       <td class="highlight">${nextBuyer}</td>
-      <td><input type="checkbox" data-item="${item}"></td>
+      <td><input type="checkbox" data-item="${item.item}"></td>
     `;
     tbody.appendChild(tr);
-  }
+  });
+
+  document.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', async (e) => {
+      const itemName = e.target.dataset.item;
+      await fetch(backendUrl, {
+        method: 'POST',
+        body: JSON.stringify({ item: itemName })
+      });
+      loadData(); // Refresh table
+    });
+  });
 }
 
 loadData();
