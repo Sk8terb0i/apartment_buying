@@ -14,7 +14,8 @@
     color: #333;
   }
   table {
-    border-collapse: collapse;
+    border-collapse: separate; /* allows column gaps */
+    border-spacing: 15px 5px;  /* horizontal and vertical gaps */
     width: 80%;
     margin: 20px auto;
     background-color: #fff;
@@ -27,14 +28,13 @@
     text-align: left;
   }
   th {
-    background-color: #4CAF50;
+    background-color: #6C63FF; /* deep lavender for header */
     color: white;
   }
-  tr:nth-child(even) {
+  tr:nth-child(even) td {
     background-color: #f9f9f9;
   }
   .highlight {
-    background-color: #a0ffa0;
     font-weight: bold;
   }
   .buyer-list span {
@@ -44,8 +44,8 @@
     background-color: #eee;
   }
   .buyer-list .current {
-    background-color: #4CAF50;
-    color: white;
+    background-color: #D8BFD8; /* lavender */
+    color: #4B0082; /* darker text for contrast */
     font-weight: bold;
   }
   input[type=checkbox] {
@@ -60,7 +60,7 @@
   <thead>
     <tr>
       <th>Item</th>
-      <th>Buyers</th>
+      <th>Next one to buy is highlighted</th>
       <th>Bought?</th>
     </tr>
   </thead>
