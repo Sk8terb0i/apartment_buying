@@ -12,6 +12,7 @@
         max-width: 700px;
         margin: auto;
     }
+    h1 { text-align:center; margin-bottom:25px; }
     .item {
         background: white;
         padding: 15px;
@@ -30,7 +31,6 @@
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
-        margin-bottom: 10px;
     }
     .person {
         padding: 4px 8px;
@@ -38,20 +38,20 @@
         background: #e3e3e3;
     }
     .highlight {
-        background: #4f46e5;
+        background: #2563eb;
         color: white;
         font-weight: bold;
     }
     button {
         padding: 8px 14px;
-        background: #4f46e5;
+        background: #2563eb;
         color: white;
         border: none;
         border-radius: 8px;
         cursor: pointer;
     }
     button:hover {
-        background: #3730a3;
+        background: #1d4ed8;
     }
 </style>
 </head>
@@ -66,31 +66,37 @@ const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5msEYqaYPEQUz
 
 const UPDATE_URL = "https://script.google.com/macros/s/AKfycbwo2qU3FJ6s0D6FgDOhk04EJvWpoyjM5TSYIpYJSC0tKJJw7pktWne85X12iHn3U0zk/exec";
 
+// Add timestamp to avoid CSV caching
 async function loadCSV() {
-    const response = await fetch(CSV_URL);
+    const response = await fetch(CSV_URL + "&cachebuster=" + Date.now());
     const text = await response.text();
     const rows = text.trim().split("\n").map(r => r.split(","));
     const header = rows[0];
     return rows.slice(1).map(r => ({
-        item: r[0],
-        index: parseInt(r[1]),
-        cycle: r[2].split(",")
+        item: r[0].replace(/"/g, "").trim(),
+        index: parseInt(r[1].replace(/"/g, "").trim()) || 0,
+        cycle: r[2].replace(/"/g, "").trim().split(",").map(n => n.trim())
     }));
 }
 
 async function updateIndex(itemName, newIndex) {
-    await fetch(UPDATE_URL, {
-        method: "POST",
-        body: JSON.stringify({ item: itemName, index: newIndex }),
-        headers: { "Content-Type": "application/json" }
-    });
+    try {
+        await fetch(UPDATE_URL, {
+            method: "POST",
+            body: JSON.stringify({ item: itemName, index: newIndex }),
+            headers: { "Content-Type": "application/json" }
+        });
+    } catch(err) {
+        console.error("Update failed:", err);
+        alert("Failed to update sheet. Check console.");
+    }
 }
 
 function render(items) {
     const container = document.getElementById("container");
     container.innerHTML = "";
 
-    items.forEach((it, idx) => {
+    items.forEach(it => {
         const div = document.createElement("div");
         div.className = "item";
 
@@ -116,11 +122,10 @@ function render(items) {
         div.appendChild(left);
 
         const btn = document.createElement("button");
-        btn.textContent = "Bought";
+        btn.textContent = "Bought it :)";
         btn.onclick = async () => {
-            const newIndex = (it.index + 1) % it.cycle.length;
-            it.index = newIndex;
-            await updateIndex(it.item, newIndex);
+            it.index = (it.index + 1) % it.cycle.length;
+            await updateIndex(it.item, it.index);
             render(items);
         };
 
